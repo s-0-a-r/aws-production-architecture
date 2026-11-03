@@ -6,6 +6,9 @@
 *.tfstate.*
 *.tfstate.backup
 
+# Save plan files
+*.tfplan
+
 # Crash log files
 crash.log
 crash.*.log

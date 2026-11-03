@@ -1,10 +1,15 @@
+output "vpc_id" {
+  description = "第9章のFlow Logs設定で使用するVPC ID"
+  value       = module.vpc.vpc_id
+}
+
 output "alb_dns_name" {
-  description = "クライアントがアクセスするALBのDNS名"
+  description = "Webアクセス確認用ALB DNS名"
   value       = module.compute_alb.alb_dns_name
 }
 
-output "rds_endpoint" {
-  description = "RDSデータベースのエンドポイントアドレス"
+output "db_endpoint" {
+  description = "RDSインスタンスのエンドポイント"
   value       = module.database_rds.db_endpoint
 }
 

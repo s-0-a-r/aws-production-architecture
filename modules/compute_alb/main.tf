@@ -1,12 +1,6 @@
-# 最新のAmazon Linux 2023 AMIの取得
-data "aws_ami" "amazon_linux_2023" {
-  most_recent = true
-  owners      = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["al2023-ami-2023.*-x86_64"]
-  }
+# 最新のAmazon Linux 2023 AMIをSSMパラメータストアから取得
+data "aws_ssm_parameter" "al2023" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
 # ALB用セキュリティグループ
@@ -113,11 +107,23 @@ resource "aws_lb_listener" "http" {
 
 # Web EC2 Instances (Multi-AZ)
 resource "aws_instance" "web" {
-  count                  = length(var.public_subnet_ids)
-  ami                    = data.aws_ami.amazon_linux_2023.id
-  instance_type          = var.instance_type
-  subnet_id              = var.public_subnet_ids[count.index]
-  vpc_security_group_ids = [aws_security_group.web.id]
+  count                       = length(var.public_subnet_ids)
+  ami                         = data.aws_ssm_parameter.al2023.value
+  instance_type               = var.instance_type
+  subnet_id                   = var.public_subnet_ids[count.index]
+  vpc_security_group_ids      = [aws_security_group.web.id]
+  associate_public_ip_address = true
+  user_data_replace_on_change = true
+
+  metadata_options {
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+    http_endpoint               = "enabled"
+  }
+
+  root_block_device {
+    encrypted = true
+  }
 
   user_data = <<-EOF
               #!/bin/bash

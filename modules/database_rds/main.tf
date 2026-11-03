@@ -81,6 +81,8 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids = [aws_security_group.db.id]
   publicly_accessible    = false
   multi_az               = true
+  storage_encrypted      = true
+  apply_immediately      = true
   skip_final_snapshot    = true
 
   tags = {

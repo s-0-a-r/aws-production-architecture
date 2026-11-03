@@ -1,5 +1,6 @@
 terraform {
-  required_version = ">= 1.5.0"
+  # S3ネイティブロック (use_lockfile) を利用する場合は Terraform >= 1.10.0 を推奨します
+  required_version = ">= 1.8.0"
 
   required_providers {
     aws = {
@@ -12,7 +13,17 @@ terraform {
     }
   }
 
-  # Module 5で作成したS3バケット名とDynamoDBテーブル名を指定して有効化してください
+  # 第7章で作成したS3バケット名を指定してバックエンドを有効化します。
+  # 方式A: S3ネイティブロック (Terraform 1.10以降推奨)
+  # backend "s3" {
+  #   bucket       = "YOUR-TERRAFORM-STATE-BUCKET-NAME"
+  #   key          = "dev/terraform.tfstate"
+  #   region       = "ap-northeast-1"
+  #   encrypt      = true
+  #   use_lockfile = true
+  # }
+
+  # 方式B: DynamoDBロックテーブル (従来方式)
   # backend "s3" {
   #   bucket         = "YOUR-TERRAFORM-STATE-BUCKET-NAME"
   #   key            = "dev/terraform.tfstate"

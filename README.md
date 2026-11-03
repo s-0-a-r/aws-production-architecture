@@ -8,14 +8,44 @@ AWS上で堅牢なWebシステムを構築するための標準的な3層構成�
 
 ## 1. アーキテクチャ概要
 
+```mermaid
+flowchart TB
+    Client(("クライアント<br/>(ブラウザ)"))
+
+    subgraph AWS ["AWS Cloud (ap-northeast-1)"]
+        IGW["インターネットゲートウェイ<br/>(aws-career-dev-igw)"]
+
+        subgraph VPC ["VPC (10.0.0.0/16)"]
+            subgraph PublicSubnets ["パブリックサブネット (外部公開層)"]
+                ALB["Application Load Balancer<br/>(alb-sg: ポート80 許可)"]
+                Web1["Web EC2 #1 (10.0.1.0/24)<br/>AZ: 1a / web-server-sg"]
+                Web2["Web EC2 #2 (10.0.2.0/24)<br/>AZ: 1c / web-server-sg"]
+            end
+
+            subgraph PrivateSubnets ["プライベートサブネット (データベース層)"]
+                RDS_Primary[("RDS PostgreSQL Primary<br/>AZ: 1a / rds-db-sg")]
+                RDS_Standby[("RDS PostgreSQL Standby<br/>AZ: 1c / rds-db-sg")]
+            end
+        end
+    end
+
+    Client -->|"HTTP: 80"| IGW
+    IGW --> ALB
+    ALB -->|"HTTP: 80 (送信元: alb-sg)"| Web1
+    ALB -->|"HTTP: 80 (送信元: alb-sg)"| Web2
+    Web1 -->|"PostgreSQL: 5432 (送信元: web-server-sg)"| RDS_Primary
+    Web2 -->|"PostgreSQL: 5432 (送信元: web-server-sg)"| RDS_Primary
+    RDS_Primary -.->|"ストレージ層同期レプリケーション"| RDS_Standby
+```
+
 - **ネットワーク層 (`modules/vpc`)**: 
   2つのアベイラビリティゾーン（AZ-A, AZ-C）にまたがるパブリック/プライベートサブネット（計4サブネット）、インターネットゲートウェイ（IGW）、明示的ルートテーブルを定義。
 - **負荷分散・Web層 (`modules/compute_alb`)**: 
   多段セキュリティグループ（ALB用SG -> Web用SG）による通信隔離、HTTPヘルスチェック付きApplication Load Balancer（ALB）、Multi-AZ分散配置されたEC2 Webサーバー。
 - **データ層 (`modules/database_rds`)**: 
-  DBサブネットグループ、Web層SGからの通信のみを許可するDB用SG、AWS Secrets Managerによるパスワード動的秘匿化、Amazon RDS Multi-AZ（EBS同期ブロックレプリケーション + DNSフェイルオーバー）。
+  DBサブネットグループ、Web層SGからの通信のみを許可するDB用SG、AWS Secrets Managerによるパスワード動的秘匿化、Amazon RDS Multi-AZ（ストレージ層同期ブロックレプリケーション + DNS自動フェイルオーバー）。
 - **ステート管理 (`environments/dev/backend.tf`)**: 
-  S3バケット（暗号化・バージョニング）とDynamoDB（排他ロックテーブル）によるチーム開発前提のリモートバックエンド。
+  S3バケット（暗号化・バージョニング）と `use_lockfile = true`（S3ネイティブ排他ロック）によるチーム開発前提のリモートバックエンド（Terraform 1.10+）。
 
 ---
 
@@ -52,7 +82,7 @@ AWS上で堅牢なWebシステムを構築するための標準的な3層構成�
 
 ## 3. 前提条件
 
-- Terraform >= 1.5.0
+- Terraform >= 1.10.0
 - AWS CLI がインストールされ、適切なIAM権限（管理者相当）が設定されていること
 - リージョン: `ap-northeast-1` (東京)
 
